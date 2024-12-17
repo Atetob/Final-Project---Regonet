@@ -109,6 +109,41 @@ print("Missing values:\\n", merged_df.isnull().sum())
 
 
 #Data Analysis
+
+## Line Chart: Trends over time for Under-fifteen mortality rate
+plt.figure(figsize=(10, 6))
+for entity in merged_df['Entity'].unique():
+    entity_df = merged_df[merged_df['Entity'] == entity]
+    plt.plot(entity_df['Year'], entity_df['Under-fifteen mortality rate'], label=entity)
+plt.title("Under-Fifteen Mortality Rate Trends")
+plt.xlabel("Year")
+plt.ylabel("Mortality Rate")
+plt.legend()
+plt.show()
+
+## Pie Chart: Distribution of Health Insurance Coverage by Country
+avg_insurance = merged_df.groupby('Entity')['Share of population covered by health insurance (ILO (2014))'].mean()
+
+## Ensure the data is numeric and drop any invalid entries
+avg_insurance = pd.to_numeric(avg_insurance, errors='coerce').dropna()
+
+plt.figure(figsize=(8, 8))
+plt.pie(avg_insurance, labels=avg_insurance.index, autopct='%1.1f%%', startangle=140)
+plt.title("Distribution of Health Insurance Coverage")
+plt.show()
+
+## Heatmap: Focus on vaccination coverage
+from folium.plugins import HeatMap
+
+vaccination_columns = ['DTP3 (% of one-year-olds immunized)', 'BCG (% of one-year-olds immunized)',
+                       'HepB3 (% of one-year-olds immunized)', 'MCV1 (% of one-year-olds immunized)']
+vaccination_df = merged_df[['Entity'] + vaccination_columns]
+vaccination_avg = vaccination_df.groupby('Entity').mean()
+plt.figure(figsize=(10, 6))
+sns.heatmap(vaccination_avg, annot=True, cmap="YlGnBu")
+plt.title("Average Vaccination Coverage by Country")
+plt.show()
+
 ##Correlation Analysis
 ### Encode 'Entity' as numeric for correlation analysis
 merged_df['Entity_encoded'] = merged_df['Entity'].astype('category').cat.codes
@@ -164,6 +199,33 @@ plt.ylabel("Health Insurance Coverage (%)")
 plt.xticks(rotation=45)
 plt.savefig('Health_Insurance_Coverage_by_Country.png', format='png', dpi=400)
 plt.show()
+
+##Plot a Chloropleth Map
+import plotly.express as px
+
+### Ensure relevant columns are numeric (coerce errors to NaN)
+for col in merged_df.columns:
+    if col not in ['Entity', 'Code', 'Year']:
+        merged_df[col] = pd.to_numeric(merged_df[col], errors='coerce')
+
+### Drop rows where 'Code' or 'Under-fifteen mortality rate' is missing
+choropleth_data = merged_df[['Entity', 'Code', 'Under-fifteen mortality rate']].dropna()
+
+### Group data to calculate the mean
+choropleth_data = choropleth_data.groupby(['Entity', 'Code'], as_index=False).mean()
+
+### Choropleth Map: Under-Fifteen Mortality Rate
+fig = px.choropleth(
+    data_frame=choropleth_data,
+    locations='Code',  # ISO alpha-3 country codes
+    color='Under-fifteen mortality rate',
+    hover_name='Entity',
+    title='Under-Fifteen Mortality Rate by Country',
+    color_continuous_scale='Reds'
+)
+
+fig.show()
+
 
 #Data Summary and Recommendation
 columns_to_include = [
